@@ -13,7 +13,7 @@ abbr ... 'cd ../..'
 
 
 # Alias
-alias rmd 'rmdir -p'
+alias rmd 'rm -vr'
 alias vi 'nvim'
 alias bat 'batcat -p'
 alias python 'python3'
