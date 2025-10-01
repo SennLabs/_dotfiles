@@ -14,3 +14,6 @@ ln -s "${config_dir}fish/functions" ~/.config/fish/functions
 ln -s "${config_dir}nvim" ~/.config/nvim
 
 ln -s "${config_dir}tmux/tmux.conf" ~/.tmux.conf
+
+ln -s "${config_dir}bash/.bash_aliases" ~/.bash_aliases
+source ~/.bashrc
