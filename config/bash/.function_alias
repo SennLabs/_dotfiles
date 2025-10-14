@@ -1,1 +1,2 @@
 alias cdl='source auto_cd_ls.sh'
+alias mkc='source mkdir_cd.sh'

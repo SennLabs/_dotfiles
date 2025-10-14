@@ -1,19 +1,38 @@
 # Env Var
 set -gx EDITOR nvim
+set -U fish_greeting
 
 
-# Abbr
-abbr rm 'rm -v'
-abbr cp 'cp -v'
-abbr ls 'ls -a'
-abbr mv 'mv -v'
-abbr grep 'grep --colour=auto'
+# Colours
+set -g fish_color_command --bold green
+set -g fish_color_error red
+set -g fish_color_quote yellow
+set -g fish_color_param white
+set -g fish_pager_color_selected_completion brblack
+set -g fish_color_valid_path --italics brblue
+set -g fish_color_user brmagenta
+set -g fish_color_host brcyan
+set -g fish_color_host_remote brred
+
+
+
+# Nav
 abbr .. 'cd ..'
 abbr ... 'cd ../..'
 
 
-# Alias
+# filehandling
+abbr rm 'rm -v'
+abbr cp 'cp -v'
+abbr mv 'mv -v'
 alias rmd 'rm -vr'
+abbr ls 'ls -a'
+abbr grep 'grep --colour=auto'
+
+# 
+alias chmox 'chmod +x'
+
+# Apps
 alias vi 'nvim'
 alias bat 'batcat -p'
 alias python 'python3'

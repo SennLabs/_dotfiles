@@ -1,14 +1,18 @@
 
 # Moving/Base Files Handling
+
+# Navigation
 alias ..='cd ..'
 alias ...='cd ../..'
-alias grep='grep --colour=auto'
+
+# filehandling
 alias rm='rm -v'
 alias cp='cp -v'
-alias lsa='ls --color=auto -a'
 alias mv='mv -v'
 alias rmd='rm -vr'
 
+alias lsa='ls --color=auto -a'
+alias grep='grep --colour=auto'
 
 # Apps
 alias vi='nvim'
