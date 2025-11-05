@@ -12,6 +12,7 @@ Docker Engine, Dev, Containerization, 1, 1
 NeoVim, Dev, Editor, 1, 1
 fzf, Dev, Utility, 0, 1
 curl, Dev, Utility, 1, 1
+wezterm, Dev, Terminal, 1, 1
 
 
 Notepad++, Utility, Editor, 1, 0
