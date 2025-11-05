@@ -34,7 +34,7 @@ alias chmox 'chmod +x'
 
 # Apps
 alias vi 'nvim'
-alias bat 'batcat -p'
+alias bat 'bat -p'
 alias python 'python3'
 alias py 'python3'
 
