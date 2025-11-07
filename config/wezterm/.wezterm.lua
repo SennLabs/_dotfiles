@@ -4,8 +4,19 @@ local act = wezterm.action
 -- This will hold the configuration.
 local config = wezterm.config_builder()
 
--- This is where you actually apply your config choices.
--- config.default_prog = { 'pwsh.exe', '-NoLogo' }
+
+-- OS Specific settings
+-- Unix/Linux
+local HomePath = os.getenv("HOME")
+if HomePath then
+  --config.default_prog = { '/usr/bin/bash', '-l' }
+end
+
+-- Windows
+local WinDir = os.getenv("windir")
+if WinDir then
+  config.default_prog = { 'pwsh.exe', '-NoLogo' }
+end
 
 
 
@@ -24,11 +35,6 @@ config.color_scheme = 'Andromeda'
 
 
 config.keys = {
-  {
-    key = 'c',
-    mods = 'CTRL',
-    action = act.CopyTo("Clipboard"),
-  },
   {
     key = 'v',
     mods = 'CTRL',
