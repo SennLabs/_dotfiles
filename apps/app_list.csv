@@ -14,6 +14,7 @@ fzf, Dev, Utility, 0, 1
 curl, Dev, Utility, 1, 1
 wezterm, Dev, Terminal, 1, 1
 jrnl, Utility, Notetaking, 1, 1
+PowerToys, Dev, Utility, 1, 0
 Notepad++, Utility, Editor, 1, 0
 KeePass, Utility, Password Manager, 1, 0
 Firefox, Utility, Browser, 1, 1
