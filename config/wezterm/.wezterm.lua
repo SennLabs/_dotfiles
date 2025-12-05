@@ -9,7 +9,7 @@ local config = wezterm.config_builder()
 -- Unix/Linux
 local HomePath = os.getenv("HOME")
 if HomePath then
-  --config.default_prog = { '/usr/bin/bash', '-l' }
+  config.default_prog = { '/usr/bin/bash', '-l' }
 end
 
 -- Windows
@@ -39,6 +39,11 @@ config.keys = {
     key = 'v',
     mods = 'CTRL',
     action = act.PasteFrom("Clipboard"),
+  },
+  {
+    key = 'c',
+    mods = 'CTRL',
+    action = act.CopyTo("Clipboard"),
   },
   {
     key = 'n',
