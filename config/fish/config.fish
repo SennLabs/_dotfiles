@@ -26,14 +26,14 @@ abbr rm 'rm -v'
 abbr cp 'cp -v'
 abbr mv 'mv -v'
 alias rmd 'rm -vr'
-abbr ls 'ls -a'
-abbr grep 'grep --colour=auto'
+alias ls 'ls -a'
+alias grep 'grep --colour=auto'
 
 # 
 alias chmox 'chmod +x'
 
 # Apps
-alias vi 'nvim'
+# alias vi 'nvim'
 alias bat 'bat -p'
 alias python 'python3'
 alias py 'python3'
