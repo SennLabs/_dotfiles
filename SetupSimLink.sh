@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Symlinks every config in this repo into place.
 #
+#   ./SetupSimLink.sh [--profile core|server|desktop]
+#
 # Idempotent and non-destructive: re-running is a no-op, and anything already
 # living at a target path is moved into ~/.dotfiles-backup/<timestamp>/ rather
 # than deleted. No prompts, so it is safe in a provisioning script.
@@ -12,6 +14,15 @@ if [ -r "$HOME/.config/dotfiles" ]; then
     set -a && source "$HOME/.config/dotfiles" && set +a
 fi
 : "${DOTFILEDIR:=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
+
+profile="${DOTFILEPROFILE:-server}"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --profile) profile="${2:?--profile needs a value}"; shift 2;;
+        --profile=*) profile="${1#*=}"; shift;;
+        *) echo "Unknown option: $1" >&2; exit 2;;
+    esac
+done
 
 config_dir="$DOTFILEDIR/config"
 backup_dir="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
@@ -52,7 +63,8 @@ link() {
     echo "->  Linked $label"
 }
 
-# Bash on Fedora/RHEL does not source ~/.bash_aliases the way Debian's default
+# Aliases and functions are interactive-only, so ~/.bashrc is the right home for
+# them. Fedora/RHEL does not source ~/.bash_aliases the way Debian's default
 # ~/.bashrc does, so wire it up explicitly. Marker-delimited and added once.
 ensure_bashrc_hook() {
     local rc="$HOME/.bashrc"
@@ -64,6 +76,7 @@ ensure_bashrc_hook() {
 
 # >>> dotfiles >>>
 # Env first: .bash_aliases reads BAT_CMD, which dotfiles_env.sh resolves.
+# (Also sourced from the login file, for shells that never read ~/.bashrc.)
 for _df in "$HOME/.config/dotfiles_env.sh" "$HOME/.bash_aliases" "$HOME/.bash_functions"; do
     [ -r "$_df" ] && . "$_df"
 done
@@ -73,7 +86,64 @@ EOF
     echo "->  Added source hook to ~/.bashrc"
 }
 
-echo "Linking dotfiles from $DOTFILEDIR"
+# True if $1 contains a real 'source'/'.' of bashrc. Comments are stripped
+# first: a file merely *mentioning* bashrc in prose must not count as wired up.
+# Note the here-string rather than 'sed ... | grep -q': under 'set -o pipefail'
+# grep -q exits on the first match, sed dies of SIGPIPE, and the pipeline
+# reports failure even when the pattern was found.
+sources_bashrc() {
+    [ -f "$1" ] || return 1
+    local stripped
+    stripped=$(sed 's/#.*//' "$1" 2>/dev/null || true)
+    grep -qE '(^|[[:space:];&|(])(\.|source)[[:space:]]+[^;&|]*bashrc' <<<"$stripped"
+}
+
+# SSH gives you a *login* shell, which reads ~/.bash_profile or ~/.profile --
+# never ~/.bashrc directly. Two things go wrong without this:
+#
+#   1. Minimal images sometimes ship neither file, so nothing chains to
+#      ~/.bashrc and the hook above never runs at all.
+#   2. Ubuntu's stock ~/.bashrc returns early when non-interactive
+#      ([ -z "$PS1" ] && return), so anything appended to it is invisible to a
+#      non-interactive login shell. Environment variables must not sit behind
+#      that guard -- EDITOR and LANG are needed by 'ssh host -t <cmd>' too.
+#
+# So: env goes in the login file, aliases/functions stay in ~/.bashrc.
+ensure_login_shell_hook() {
+    local rc="$HOME/.profile"
+    # A ~/.bash_profile, if present, shadows ~/.profile entirely.
+    [ -f "$HOME/.bash_profile" ] && rc="$HOME/.bash_profile"
+
+    if [ -f "$rc" ] && grep -qF ">>> dotfiles login >>>" "$rc"; then
+        echo "==  login hook already present in ${rc##*/}"
+        return 0
+    fi
+
+    # Decide before writing: appending would otherwise change what we detect.
+    local need_chain=0
+    sources_bashrc "$rc" || need_chain=1
+
+    {
+        echo ""
+        echo "# >>> dotfiles login >>>"
+        echo "# Environment for every login shell, including non-interactive ones,"
+        echo "# which never reach ~/.bashrc."
+        echo '[ -r "$HOME/.config/dotfiles_env.sh" ] && . "$HOME/.config/dotfiles_env.sh"'
+        if [ "$need_chain" -eq 1 ]; then
+            echo '# Interactive login shells also need ~/.bashrc for aliases and functions.'
+            echo '[ -n "$BASH_VERSION" ] && [ -r "$HOME/.bashrc" ] && . "$HOME/.bashrc"'
+        fi
+        echo "# <<< dotfiles login <<<"
+    } >> "$rc"
+
+    if [ "$need_chain" -eq 1 ]; then
+        echo "->  Added login hook to ${rc##*/} (env + ~/.bashrc chain)"
+    else
+        echo "->  Added login hook to ${rc##*/} (env; already chained ~/.bashrc)"
+    fi
+}
+
+echo "Linking dotfiles from $DOTFILEDIR (profile: $profile)"
 echo
 
 # Shared helper scripts. tmux.conf and others reference ~/.config/scripts.
@@ -90,16 +160,34 @@ link "$config_dir/fish/config.fish" "$HOME/.config/fish/config.fish" "fish confi
 link "$config_dir/fish/functions"   "$HOME/.config/fish/functions"   "fish functions"
 
 # Editors and terminals
-link "$config_dir/nvim"              "$HOME/.config/nvim"     "Neovim"
-link "$config_dir/yazi"              "$HOME/.config/yazi"     "Yazi"
-link "$config_dir/tmux/tmux.conf"    "$HOME/.tmux.conf"       "Tmux"
-link "$config_dir/wezterm/.wezterm.lua" "$HOME/.wezterm.lua"  "WezTerm"
+link "$config_dir/nvim"           "$HOME/.config/nvim" "Neovim"
+link "$config_dir/yazi"           "$HOME/.config/yazi" "Yazi"
+link "$config_dir/tmux/tmux.conf" "$HOME/.tmux.conf"   "Tmux"
+
+# Git. ~/.config/git/config is git's own XDG location; the shared config
+# Includes ~/.config/git/config.local, which holds user.name/user.email so no
+# identity is committed to a public repo.
+link "$config_dir/git/config" "$HOME/.config/git/config" "Git"
+
+# Readline, for every bare bash prompt over SSH.
+link "$config_dir/readline/inputrc" "$HOME/.inputrc" "readline"
 
 # Bash
-link "$config_dir/bash/.bash_aliases"   "$HOME/.bash_aliases"          "Bash aliases"
-link "$config_dir/bash/.bash_functions" "$HOME/.bash_functions"        "Bash functions"
+link "$config_dir/bash/.bash_aliases"   "$HOME/.bash_aliases"           "Bash aliases"
+link "$config_dir/bash/.bash_functions" "$HOME/.bash_functions"         "Bash functions"
 link "$config_dir/misc_env_var.sh"      "$HOME/.config/dotfiles_env.sh" "shared env vars"
 ensure_bashrc_hook
+ensure_login_shell_hook
+
+# GUI-only configs. Linking these on a headless box is harmless but pointless,
+# and it makes 'desktop' vs 'server' actually mean something.
+if [ "$profile" = "desktop" ]; then
+    link "$config_dir/wezterm/.wezterm.lua" "$HOME/.wezterm.lua" "WezTerm"
+    link "$config_dir/kzones/layouts.json" \
+         "$HOME/.local/share/kzones/layouts.json" "KZones"
+else
+    echo "..  skipping GUI configs (WezTerm, KZones) for profile '$profile'"
+fi
 
 echo
 if [ "$backed_up" -eq 1 ]; then

@@ -1,0 +1,43 @@
+# Linked to ~/.inputrc. Affects bash and every other readline program (psql,
+# python, sqlite3...), which makes it the cheapest quality-of-life win on a
+# bare SSH session.
+
+# A ~/.inputrc REPLACES the system file rather than adding to it, so pull the
+# distro defaults back in first.
+$include /etc/inputrc
+
+# Completion
+set completion-ignore-case on
+set completion-map-case on
+set show-all-if-ambiguous on
+set show-all-if-unmodified on
+set skip-completed-text on
+set mark-symlinked-directories on
+set visible-stats on
+set page-completions off
+set completion-query-items 200
+
+# Colour completions the way ls does (readline >= 7; ignored on older).
+set colored-stats on
+set colored-completion-prefix on
+
+# No terminal bell over SSH.
+set bell-style none
+
+# Up/Down search history for what you have already typed, instead of walking
+# through every command blindly. The single biggest one here.
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+# Same on the application-mode variants some terminals send.
+"\eOA": history-search-backward
+"\eOB": history-search-forward
+
+# Ctrl+Left / Ctrl+Right move by word.
+"\e[1;5C": forward-word
+"\e[1;5D": backward-word
+"\e[5C": forward-word
+"\e[5D": backward-word
+
+# Ctrl+Delete / Ctrl+Backspace delete a word.
+"\e[3;5~": kill-word
+"\C-h": backward-kill-word

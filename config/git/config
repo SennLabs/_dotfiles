@@ -1,0 +1,66 @@
+# Linked to ~/.config/git/config (git's own XDG location).
+#
+# No identity here on purpose: user.name and user.email belong in
+# ~/.config/git/config.local, which is gitignored. A missing include is
+# silently ignored by git, so a fresh machine works until you add one:
+#
+#   git config -f ~/.config/git/config.local user.name  "you"
+#   git config -f ~/.config/git/config.local user.email "you@example.com"
+[include]
+    path = ~/.config/git/config.local
+
+[init]
+    defaultBranch = main
+
+[pull]
+    # Never create a surprise merge commit on a headless box.
+    ff = only
+
+[push]
+    default = simple
+    # Saves --set-upstream on every new branch (git >= 2.37).
+    autoSetupRemote = true
+
+[fetch]
+    prune = true
+
+[core]
+    # EDITOR is resolved with a fallback chain in misc_env_var.sh.
+    pager = less -FRX
+
+[diff]
+    algorithm = histogram
+    colorMoved = default
+
+[merge]
+    conflictStyle = zdiff3
+
+[rerere]
+    # Remember conflict resolutions; useful when a rebase replays the same one.
+    enabled = true
+
+[log]
+    date = iso
+
+[color]
+    ui = auto
+
+[alias]
+    s = status --short --branch
+    l = log --oneline --graph --decorate -20
+    ll = log --oneline --graph --decorate --all
+    d = diff
+    ds = diff --staged
+    a = add
+    aa = add --all
+    c = commit
+    cm = commit --message
+    ca = commit --amend
+    co = checkout
+    sw = switch
+    b = branch -vv
+    unstage = restore --staged
+    last = log -1 --stat
+    # What am I about to push?
+    outgoing = log --oneline @{upstream}..HEAD
+    incoming = log --oneline HEAD..@{upstream}

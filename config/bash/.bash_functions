@@ -9,7 +9,8 @@ mkc() {
         echo "usage: mkc <dir>" >&2
         return 2
     fi
-    mkdir -p -- "$1" && cd -- "$1"
+    mkdir -p -- "$1" || return
+    cd -- "$1" || return
 }
 
 # cd into a directory and immediately list it.
@@ -19,9 +20,16 @@ cdls() {
 }
 
 # ls -ahl with column headers, aligned.
+# 'column' comes from bsdextrautils on Debian/Ubuntu and util-linux on Fedora,
+# and is missing from minimal images, so fall back to unaligned output.
 lsh() {
-    {
-        echo "Permissions Links Owner Group Size Modified-Month Day Time Name"
+    if command -v column >/dev/null 2>&1; then
+        {
+            echo "Permissions Links Owner Group Size Modified-Month Day Time Name"
+            ls -ahl "$@" | tail -n +2
+        } | column -t
+    else
+        echo "Permissions Links Owner Group Size Modified Name"
         ls -ahl "$@" | tail -n +2
-    } | column -t
+    fi
 }

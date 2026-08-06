@@ -1,0 +1,237 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y shellcheck
+
+      - name: Lint shell scripts
+        run: |
+          # The dotfiles under config/ are sourced, not executed, so tell
+          # shellcheck what shell to assume for them.
+          shellcheck --severity=warning \
+            bootstrap.sh Init.sh InstallApps.sh SetupCron.sh SetupSimLink.sh \
+            scripts/*.sh
+          shellcheck --severity=warning --shell=sh \
+            config/misc_env_var.sh
+          shellcheck --severity=warning --shell=bash \
+            config/bash/.bash_aliases config/bash/.bash_functions
+
+  fish-syntax:
+    name: fish syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y fish
+      - name: Parse fish config and functions
+        run: |
+          fish -n config/fish/config.fish
+          for f in config/fish/functions/*.fish; do
+            echo "checking $f"
+            fish -n "$f"
+          done
+
+  lua-syntax:
+    name: lua syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y lua5.4
+      - name: Parse lua configs
+        run: |
+          luac5.4 -p config/nvim/init.lua
+          luac5.4 -p config/wezterm/.wezterm.lua
+
+  install:
+    name: install (${{ matrix.image }}, ${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # slim/minimal images on purpose: they catch the "assumed a tool was
+          # present" class of bug that a full runner image hides.
+          - image: debian:stable-slim
+            profile: server
+          - image: ubuntu:latest
+            profile: server
+          - image: ubuntu:latest
+            profile: desktop
+          - image: fedora:latest
+            profile: server
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: Install the bare minimum (bootstrap.sh assumes nothing else)
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update -qq
+            apt-get install -y --no-install-recommends ca-certificates git
+          else
+            dnf install -y ca-certificates git
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Run the installer
+        run: bash ./Init.sh --profile ${{ matrix.profile }}
+
+      - name: Run it again (must be idempotent)
+        run: |
+          bash ./Init.sh --profile ${{ matrix.profile }} | tee second-run.log
+          # A second run must not relink anything, and must not back anything up.
+          if grep -q '^->  Linked' second-run.log; then
+            echo "FAIL: second run relinked files, so it is not idempotent" >&2
+            exit 1
+          fi
+          if grep -q 'backed up existing' second-run.log; then
+            echo "FAIL: second run backed up files it had itself created" >&2
+            exit 1
+          fi
+
+      - name: Every symlink resolves
+        run: |
+          status=0
+          for l in ~/.bash_aliases ~/.bash_functions ~/.inputrc ~/.tmux.conf \
+                   ~/.ssh/config ~/.config/scripts ~/.config/nvim \
+                   ~/.config/yazi ~/.config/git/config \
+                   ~/.config/fish/config.fish ~/.config/fish/functions \
+                   ~/.config/dotfiles_env.sh; do
+            if [ ! -e "$l" ]; then
+              echo "FAIL: $l is missing or dangling" >&2
+              status=1
+            fi
+          done
+          exit $status
+
+      - name: GUI configs respect the profile
+        run: |
+          if [ "${{ matrix.profile }}" = "desktop" ]; then
+            [ -e ~/.wezterm.lua ] || { echo "FAIL: desktop profile did not link WezTerm" >&2; exit 1; }
+          else
+            [ -e ~/.wezterm.lua ] && { echo "FAIL: server profile linked WezTerm" >&2; exit 1; }
+          fi
+          echo ok
+
+      - name: Interactive login shell gets aliases and functions
+        run: |
+          # -l -i together: SSH gives an interactive login shell, and aliases and
+          # functions are deliberately interactive-only.
+          for fn in mkc cdls lsh; do
+            bash -lic "type -t $fn" 2>/dev/null | grep -qx function \
+              || { echo "FAIL: $fn is not defined in an interactive login shell" >&2; exit 1; }
+          done
+          echo ok
+
+      - name: Non-interactive login shell still gets the environment
+        run: |
+          # Ubuntu's stock ~/.bashrc returns early when non-interactive, so env
+          # vars must come from the login file instead. This is the regression
+          # test for that: 'ssh host -t <cmd>' needs EDITOR and LANG too.
+          got=$(bash -lc 'echo "$DOTFILES_ENV"' 2>/dev/null)
+          [ "$got" = "1" ] \
+            || { echo "FAIL: environment missing in a non-interactive login shell" >&2; exit 1; }
+          echo ok
+
+      - name: EDITOR resolves when an editor exists
+        run: |
+          if command -v nvim >/dev/null || command -v vim >/dev/null \
+             || command -v vi >/dev/null || command -v nano >/dev/null; then
+            bash -lc 'echo "$EDITOR"' | grep -q . \
+              || { echo "FAIL: an editor is installed but EDITOR is unset" >&2; exit 1; }
+            echo "ok: EDITOR=$(bash -lc 'echo $EDITOR')"
+          else
+            # Minimal images ship no editor at all; unset is the correct result.
+            echo "ok: no editor installed, EDITOR correctly left unset"
+          fi
+
+      - name: Shell starts clean with no stderr noise
+        run: |
+          # Non-interactive on purpose: an interactive bash with no TTY emits an
+          # unrelated "cannot set terminal process group" from the container.
+          err=$(bash -lc 'true' 2>&1 >/dev/null)
+          if [ -n "$err" ]; then
+            echo "FAIL: login shell wrote to stderr:" >&2
+            echo "$err" >&2
+            exit 1
+          fi
+          echo ok
+
+      - name: Package installer dry-run resolves real packages
+        run: |
+          # Exit status alone is not enough: the installer exits 0 even when it
+          # resolves nothing, which is exactly how a broken availability query
+          # (dnf5 rejecting 'list --available --installed') slipped through.
+          # Assert it actually found git.
+          out=$(bash ./InstallApps.sh --profile ${{ matrix.profile }} --dry-run)
+          echo "$out"
+          echo "$out" | grep -q '^Will install' \
+            || { echo "FAIL: resolved no installable packages at all" >&2; exit 1; }
+          echo "$out" | grep '^Will install' | grep -qw git \
+            || { echo "FAIL: git did not resolve as available" >&2; exit 1; }
+
+  installer-real:
+    # Both package managers, because apt and dnf take completely different code
+    # paths and dnf5 in particular is fussy about argument syntax.
+    name: install packages for real (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:stable-slim
+            bat: batcat      # Debian renames both binaries
+            fd: fdfind
+          - image: fedora:latest
+            bat: bat
+            fd: fd
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: Bare minimum
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update -qq
+            apt-get install -y --no-install-recommends ca-certificates git
+          else
+            dnf install -y ca-certificates git
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Install the core profile
+        run: bash ./InstallApps.sh --profile core --yes
+
+      - name: Core tools are present afterwards
+        run: |
+          status=0
+          for c in git curl tmux nvim fzf column less; do
+            command -v "$c" >/dev/null || { echo "FAIL: $c not installed" >&2; status=1; }
+          done
+          command -v ${{ matrix.bat }} >/dev/null \
+            || { echo "FAIL: ${{ matrix.bat }} not installed" >&2; status=1; }
+          command -v ${{ matrix.fd }} >/dev/null \
+            || { echo "FAIL: ${{ matrix.fd }} not installed" >&2; status=1; }
+          exit $status
+
+      - name: Detection resolves the right per-distro binary names
+        run: |
+          bash ./Init.sh --profile server >/dev/null
+          got=$(bash -lc 'echo "$BAT_CMD $FD_CMD"')
+          echo "resolved: $got"
+          [ "$got" = "${{ matrix.bat }} ${{ matrix.fd }}" ] \
+            || { echo "FAIL: expected '${{ matrix.bat }} ${{ matrix.fd }}'" >&2; exit 1; }
