@@ -5,20 +5,16 @@ local act = wezterm.action
 local config = wezterm.config_builder()
 
 
--- OS Specific settings
--- Unix/Linux
-local HomePath = os.getenv("HOME")
-if HomePath then
-  config.default_prog = { '/usr/bin/bash', '-l' }
-end
-
--- Windows
-local WinDir = os.getenv("windir")
-if WinDir then
+-- OS specific settings.
+-- target_triple is wezterm's own build target, which is a reliable OS check.
+-- Sniffing $HOME is not: Git Bash and MSYS set it on Windows too.
+if wezterm.target_triple:find('windows') then
   config.default_prog = { 'pwsh.exe', '-NoLogo' }
+else
+  -- Resolved via PATH on purpose: bash is /bin/bash on Debian/Ubuntu and
+  -- /usr/bin/bash on Fedora, and a hardcoded path fails to launch on one of them.
+  config.default_prog = { 'bash', '-l' }
 end
-
-
 
 
 -- For example, changing the initial geometry for new windows:
@@ -80,10 +76,6 @@ config.mouse_bindings = {
     },
 
 }
-
-
-
-
 
 
 -- Finally, return the configuration to wezterm:

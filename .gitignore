@@ -1,0 +1,41 @@
+# --- Anything secret or machine-specific must never land in a public repo ---
+*.local
+*.local.*
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+id_ecdsa*
+known_hosts*
+authorized_keys
+.env
+.env.*
+secrets/
+
+# Backups written by SetupSimLink.sh
+.dotfiles-backup/
+*.bak
+*.bak.*
+
+# --- State that shells and editors write into the managed config dirs ---
+config/fish/fish_variables
+config/fish/fish_history
+config/fish/completions/
+config/fish/conf.d/
+config/nvim/.netrwhist
+config/nvim/plugin/
+config/nvim/spell/
+
+# --- OS cruft ---
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# --- Editor cruft ---
+*.swp
+*.swo
+*~
+.idea/

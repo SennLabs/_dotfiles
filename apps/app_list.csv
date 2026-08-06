@@ -1,22 +1,27 @@
-ApplicationName, Group, SubGroup, Win, Linux
-Rust, Dev, Language, 1, 1
-Python, Dev, Language, 1, 1
-VSCode, Dev, Editor, 1, 1
-Tmux, Dev, Terminal, 0, 1
-Fish, Dev, Shell, 0, 1
-bat, Dev, Utility, 0, 1
-htop, Dev, Utility, 0, 1
-DB Browser for SQLite, Dev, Database, 1, 1
-Git, Dev, Version Control, 1, 1
-Docker Engine, Dev, Containerization, 1, 1
-NeoVim, Dev, Editor, 1, 1
-fzf, Dev, Utility, 0, 1
-curl, Dev, Utility, 1, 1
-wezterm, Dev, Terminal, 1, 1
-jrnl, Utility, Notetaking, 1, 1
-PowerToys, Dev, Utility, 1, 0
-Notepad++, Utility, Editor, 1, 0
-KeePass, Utility, Password Manager, 1, 0
-Firefox, Utility, Browser, 1, 1
-Inkscape, Utility, Graphics, 1, 1
-GIMP, Utility, Graphics, 1, 1
+ApplicationName,Group,SubGroup,Win,Linux
+Rust,Dev,Language,1,1
+Python,Dev,Language,1,1
+VSCode,Dev,Editor,1,1
+NeoVim,Dev,Editor,1,1
+Tmux,Dev,Terminal,0,1
+wezterm,Dev,Terminal,1,1
+Fish,Dev,Shell,0,1
+Git,Dev,Version Control,1,1
+GitHub CLI,Dev,Version Control,1,1
+Docker Engine,Dev,Containerization,1,1
+Podman Desktop,Dev,Containerization,1,1
+DB Browser for SQLite,Dev,Database,1,1
+bat,Dev,Utility,0,1
+fd,Dev,Utility,0,1
+fzf,Dev,Utility,0,1
+htop,Dev,Utility,0,1
+curl,Dev,Utility,1,1
+yazi,Dev,Utility,0,1
+PowerToys,Dev,Utility,1,0
+jrnl,Utility,Notetaking,1,1
+Notepad++,Utility,Editor,1,0
+KeePass,Utility,Password Manager,1,0
+7-Zip,Utility,Archiver,1,1
+Firefox,Utility,Browser,1,1
+Inkscape,Utility,Graphics,1,1
+GIMP,Utility,Graphics,1,1

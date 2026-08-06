@@ -1,3 +1,8 @@
+# Machine-specific and private hosts go in ~/.ssh/config.local, which is NOT
+# tracked by this repo. Include must come first: ssh takes the first value it
+# finds for each option, so earlier entries win.
+Include ~/.ssh/config.local
+
 Host *
     ServerAliveInterval 60
     ServerAliveCountMax 3

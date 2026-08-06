@@ -1,0 +1,11 @@
+Git.Git
+GitHub.cli
+Microsoft.PowerShell
+Microsoft.VisualStudioCode
+wez.wezterm
+DBBrowserForSQLite.DBBrowserForSQLite
+RedHat.Podman-Desktop
+Notepad++.Notepad++
+Microsoft.PowerToys
+DominikReichl.KeePass
+7zip.7zip

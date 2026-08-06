@@ -1,15 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Entry point. Records where this repo lives, then links every config into place.
+set -euo pipefail
 
-dotfiles_dir=$(pwd)
+# Resolve the repo location from the script itself, so this works no matter
+# which directory you invoke it from.
+dotfiles_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
-# Check if ~/.config exists, if not create it
-if [ ! -d ~/.config ]; then
-    mkdir ~/.config
+mkdir -p "$HOME/.config"
 
-fi
+# SetupSimLink.sh and SetupCron.sh both read DOTFILEDIR out of this file.
+echo "DOTFILEDIR=${dotfiles_dir}" > "$HOME/.config/dotfiles"
 
-echo "DOTFILEDIR=${dotfiles_dir}" >| ~/.config/dotfiles
+bash "$dotfiles_dir/SetupSimLink.sh"
 
-bash ./SetupSimLink.sh
-
-
+echo
+echo "Done. Restart your shell to pick up the new config:  exec \$SHELL -l"

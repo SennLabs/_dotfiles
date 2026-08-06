@@ -1,6 +1,3 @@
-
-# Moving/Base Files Handling
-
 # Navigation
 alias ..='cd ..'
 alias ...='cd ../..'
@@ -13,9 +10,16 @@ alias rmd='rm -vr'
 
 alias lsa='ls --color=auto -a'
 alias grep='grep --colour=auto'
+alias chmox='chmod +x'
+alias filecount='find . -type f | wc -l'
 
 # Apps
 alias vi='nvim'
 alias py='python3'
 alias python='python3'
-alias bat='bat -p'
+
+# BAT_CMD is resolved in misc_env_var.sh: 'batcat' on Debian/Ubuntu, 'bat'
+# elsewhere. Only define the alias if the binary is actually installed.
+if [ -n "${BAT_CMD:-}" ]; then
+    alias bat="${BAT_CMD} -p"
+fi
