@@ -1,6 +1,7 @@
 #!/bin/bash
 
-#dotfiles_dir=$(pwd)
-GitSyncScript="$(pwd)/AutoGitSync.sh"
+set -a && source ~/.config/dotfiles && set +a
 
-(crontab -l; echo "0 */2 * * * ${config_dir}") | sort -u | crontab -
+GitSyncScript="$(DOTFILEDIR)/AutoGitSync.sh"
+
+(crontab -l; echo "0 */2 * * * ${GitSyncScript}") | sort -u | crontab -

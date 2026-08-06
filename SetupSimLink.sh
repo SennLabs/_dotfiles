@@ -1,23 +1,38 @@
 #!/bin/bash
 
-dotfiles_dir=$(pwd)
-config_dir="$(pwd)/config/"
-
-echo "Dir: $dotfiles_dir"
-echo "config: $config_dir"
+set -a && source ~/.config/dotfiles && set +a
+config_dir="$DOTFILEDIR/config/"
 
 # SimLink For files
-
-
-# Check if ~/.config exists, if not create it
-if [ ! -d ~/.config ]; then
-    mkdir ~/.config
-fi
-
 
 config_created() {
     echo "Added $1 Config"
 }
+
+if [ ! -f ~/.config/tools ]; then
+    ln -s "$DOTFILEDIR/scripts" ~/.config/scripts
+fi
+
+
+if [ ! -d ~/.config/ssh ]; then
+    mkdir ~/.config/ssh
+    cat "$DOTFILEDIR/config/ssh/config" >> ~/.config/ssh/config
+    config_created "SSH"
+else
+    if [ ! -f ~/.config/ssh/config ]; then
+        cat "$DOTFILEDIR/config/ssh/config" >> ~/.config/ssh/config
+        config_created "SSH"
+    else
+        echo "SSH config exists"
+        read -p "Do you want to append it? (y/n) " choice
+        if [ "$choice" == "y" ]; then
+            cat "$DOTFILEDIR/config/ssh/config" >> ~/.config/ssh/config
+            config_created "SSH"
+        fi
+    fi
+fi
+
+
 
 
 
