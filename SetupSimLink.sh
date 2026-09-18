@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Symlinks every config in this repo into place.
 #
-#   ./SetupSimLink.sh [--profile core|server|desktop]
+#   ./SetupSimLink.sh [--profile core|container|server|desktop]
 #
 # Idempotent and non-destructive: re-running is a no-op, and anything already
 # living at a target path is moved into ~/.dotfiles-backup/<timestamp>/ rather
@@ -155,18 +155,31 @@ mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
 link "$config_dir/ssh/config" "$HOME/.ssh/config" "SSH"
 
-# Fish
-link "$config_dir/fish/config.fish" "$HOME/.config/fish/config.fish" "fish config"
-link "$config_dir/fish/functions"   "$HOME/.config/fish/functions"   "fish functions"
+# Fish and Yazi are outside the container package set, and yazi has no apt
+# package at all, so on that profile these would only leave config behind for
+# tools the image is never going to have.
+if [ "$profile" != "container" ]; then
+    link "$config_dir/fish/config.fish" "$HOME/.config/fish/config.fish" "fish config"
+    link "$config_dir/fish/functions"   "$HOME/.config/fish/functions"   "fish functions"
+    link "$config_dir/yazi"             "$HOME/.config/yazi"             "Yazi"
+else
+    echo "..  skipping fish and yazi configs for profile 'container'"
+fi
 
 # Editors and terminals
 link "$config_dir/nvim"           "$HOME/.config/nvim" "Neovim"
-link "$config_dir/yazi"           "$HOME/.config/yazi" "Yazi"
 link "$config_dir/tmux/tmux.conf" "$HOME/.tmux.conf"   "Tmux"
 
 # Git. ~/.config/git/config is git's own XDG location; the shared config
 # Includes ~/.config/git/config.local, which holds user.name/user.email so no
 # identity is committed to a public repo.
+#
+# The XDG path rather than ~/.gitconfig is a deliberate choice, not an
+# arbitrary one: a dev container is handed a copy of the host's ~/.gitconfig,
+# git reads that *after* this file, and so the host wins wherever the two
+# disagree. That is the behaviour we want -- your real identity and your own
+# preferences follow you in -- and everything the host leaves unset still comes
+# from here.
 link "$config_dir/git/config" "$HOME/.config/git/config" "Git"
 
 # Readline, for every bare bash prompt over SSH.

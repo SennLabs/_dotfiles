@@ -6,6 +6,12 @@
 #
 #   git config -f ~/.config/git/config.local user.name  "you"
 #   git config -f ~/.config/git/config.local user.email "you@example.com"
+#
+# Precedence, which matters inside a dev container: this is the XDG file, and
+# git reads ~/.gitconfig after it. Dev Containers and Codespaces put a copy of
+# the host's ~/.gitconfig there, so on any key set in both, the host wins. That
+# is intended. Keys the host does not set -- the aliases below, rerere,
+# diff.algorithm -- still take effect.
 [include]
     path = ~/.config/git/config.local
 

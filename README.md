@@ -36,16 +36,22 @@ target path is moved to `~/.dotfiles-backup/<timestamp>/` rather than deleted.
 
 ## Profiles
 
-Cumulative — `server` includes `core`, `desktop` includes both.
+Cumulative — `server` includes `core`, `desktop` includes both. `container` sits
+off to the side, taking the same packages as `core`.
 
 | Profile | Packages | Configs |
 | --- | --- | --- |
 | `core` | git, curl, tmux, neovim, bat, fd, fzf, less, column | all non-GUI |
+| `container` | same as `core` | non-GUI, minus fish and yazi |
 | `server` | + fish, htop, jq, ripgrep, rsync, ncdu, unzip, yazi, python, rust, gh, docker | all non-GUI |
 | `desktop` | + VSCode, WezTerm, browsers, graphics apps | everything, incl. WezTerm & KZones |
 
 `server` is the default, since most installs here are headless. It deliberately
 does not link WezTerm or KZones.
+
+`container` is for dev containers, where a language toolchain or a Docker engine
+belongs in the image or a devcontainer feature rather than in here — see
+[Dev containers](#dev-containers).
 
 ## Scripts
 
@@ -71,16 +77,52 @@ missing from a host's repos are reported and skipped, not fatal.
 | `config/ssh/config` | `~/.ssh/config` | all |
 | `config/git/config` | `~/.config/git/config` | all |
 | `config/readline/inputrc` | `~/.inputrc` | all |
-| `config/fish/config.fish` | `~/.config/fish/config.fish` | all |
-| `config/fish/functions/` | `~/.config/fish/functions` | all |
+| `config/fish/config.fish` | `~/.config/fish/config.fish` | all but `container` |
+| `config/fish/functions/` | `~/.config/fish/functions` | all but `container` |
 | `config/nvim/` | `~/.config/nvim` | all |
-| `config/yazi/` | `~/.config/yazi` | all |
+| `config/yazi/` | `~/.config/yazi` | all but `container` |
 | `config/tmux/tmux.conf` | `~/.tmux.conf` | all |
 | `config/bash/.bash_aliases` | `~/.bash_aliases` | all |
 | `config/bash/.bash_functions` | `~/.bash_functions` | all |
 | `config/misc_env_var.sh` | `~/.config/dotfiles_env.sh` | all |
 | `config/wezterm/.wezterm.lua` | `~/.wezterm.lua` | desktop |
 | `config/kzones/layouts.json` | `~/.local/share/kzones/layouts.json` | desktop |
+
+## Dev containers
+
+Use the editor's own dotfiles support rather than a devcontainer feature. It
+clones this repo into the container and runs the installer there as you, on
+every container it builds, with nothing to publish or version:
+
+```jsonc
+// VS Code user settings (not the project's devcontainer.json)
+"dotfiles.repository": "SennLabs/_dotfiles",
+"dotfiles.installCommand": "Init.sh --profile container"
+```
+
+`installCommand` is optional — left out, the tooling finds `bootstrap.sh` on its
+own, which detects that it is already inside a clone and links that tree in
+place. It also reads `CODESPACES`, `REMOTE_CONTAINERS` and `DEVCONTAINER` from
+the environment and selects the `container` profile without being told.
+
+Tools are a separate matter. The install runs on every container create and is
+never cached, so anything slow or heavy belongs in `devcontainer.json`, where it
+caches into the image and into prebuilds:
+
+```jsonc
+"features": { "ghcr.io/devcontainers/features/common-utils:2": {} }
+```
+
+Two behaviours worth knowing about:
+
+- **Your host's git config wins.** The container is handed a copy of the host's
+  `~/.gitconfig`, and git reads that after the XDG file this repo links. So your
+  real identity and any preference you set on the host follow you in, while the
+  aliases and the settings the host leaves alone still come from here. This is
+  deliberate; `config/git/config` says so too.
+- **Bash only.** Aliases and functions are installed for bash. If something in
+  your image makes zsh the default shell, the environment still reaches it (the
+  image's `.zprofile` sources `.profile`) but the aliases and functions do not.
 
 ### Shell startup, and why it is split
 

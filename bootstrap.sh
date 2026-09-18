@@ -4,13 +4,14 @@
 #   curl -fsSL https://raw.githubusercontent.com/SennLabs/_dotfiles/main/bootstrap.sh | sh
 #
 # Installs git, clones this repo, and runs Init.sh. Safe to re-run: an existing
-# clone is fast-forwarded rather than re-cloned.
+# clone is fast-forwarded rather than re-cloned. Run from inside a clone that
+# already exists, it skips cloning entirely and links that tree in place.
 #
 # Override with environment variables:
 #   DOTFILES_DIR=~/_dotfiles      where to clone
 #   DOTFILES_REPO=<url>           source repo
 #   DOTFILES_REF=main             branch or tag to check out
-#   DOTFILES_PROFILE=server       core | server | desktop
+#   DOTFILES_PROFILE=server       core | container | server | desktop
 #   DOTFILES_APPS=0               set to 1 to also install packages
 #
 # POSIX sh on purpose: this runs before anything is guaranteed to be present.
@@ -19,7 +20,17 @@ set -eu
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/_dotfiles}"
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/SennLabs/_dotfiles.git}"
 DOTFILES_REF="${DOTFILES_REF:-main}"
-DOTFILES_PROFILE="${DOTFILES_PROFILE:-server}"
+# A dev container wants the 'container' profile, and the tooling that builds
+# one says so in the environment. Only these three signals count: /.dockerenv
+# is true of every container, including the plain ones that do want 'server'.
+if [ -n "${DOTFILES_PROFILE:-}" ]; then
+    :
+elif [ "${CODESPACES:-}" = "true" ] || [ "${REMOTE_CONTAINERS:-}" = "true" ] \
+     || [ "${DEVCONTAINER:-}" = "true" ]; then
+    DOTFILES_PROFILE=container
+else
+    DOTFILES_PROFILE=server
+fi
 DOTFILES_APPS="${DOTFILES_APPS:-0}"
 
 say() { printf '==> %s\n' "$*"; }
@@ -56,8 +67,25 @@ fi
 # The rest of the repo is bash, not POSIX sh (arrays, mapfile, BASH_SOURCE).
 command -v bash >/dev/null 2>&1 || die "bash is required but could not be installed"
 
-# --- Clone or update -------------------------------------------------------
-if [ -d "$DOTFILES_DIR/.git" ]; then
+# --- Are we already inside a clone? ----------------------------------------
+# Dev Containers and Codespaces clone this repo themselves, to a path of their
+# choosing, and then run the first bootstrap-looking script they find at its
+# root -- this one. Cloning a second copy at that point would leave every
+# symlink pointing into a tree the tooling neither updates nor cleans up, so
+# detect the situation and link the tree we are standing in instead.
+#
+# "$0" is a real path when this file was executed and something like "sh" when
+# it arrived down a pipe from curl, which is what tells those two cases apart.
+self_dir=""
+if [ -f "$0" ]; then
+    self_dir=$(cd -- "$(dirname -- "$0")" && pwd)
+fi
+
+# -e, not -d, on .git: in a worktree or submodule it is a file, not a directory.
+if [ -n "$self_dir" ] && [ -e "$self_dir/.git" ] && [ -f "$self_dir/Init.sh" ]; then
+    say "already inside a clone at $self_dir, using it as-is"
+    DOTFILES_DIR="$self_dir"
+elif [ -d "$DOTFILES_DIR/.git" ]; then
     say "existing clone at $DOTFILES_DIR, fetching"
     git -C "$DOTFILES_DIR" fetch --quiet origin "$DOTFILES_REF"
     # --ff-only so local edits are never silently discarded.

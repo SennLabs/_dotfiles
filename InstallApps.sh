@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Installs packages from apps/app_list.csv for a given profile.
 #
-#   ./InstallApps.sh [--profile core|server|desktop] [--dry-run] [--yes]
+#   ./InstallApps.sh [--profile core|container|server|desktop] [--dry-run] [--yes]
 #
 # Profiles are cumulative: server includes core, desktop includes both.
+# container takes the same set as core: a dev container wants the CLI tools and
+# none of the language toolchains, which belong in the image instead.
 # Packages not available in the host's repos are reported and skipped rather
 # than failing the run, because package names drift between distro versions.
 set -euo pipefail
@@ -21,14 +23,14 @@ while [ $# -gt 0 ]; do
         --profile=*) profile="${1#*=}"; shift;;
         --dry-run) dry_run=1; shift;;
         --yes|-y) assume_yes=1; shift;;
-        -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+        -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
         *) echo "Unknown option: $1" >&2; exit 2;;
     esac
 done
 
 case "$profile" in
-    core|server|desktop) ;;
-    *) echo "Invalid profile '$profile' (want core, server or desktop)" >&2; exit 2;;
+    core|container|server|desktop) ;;
+    *) echo "Invalid profile '$profile' (want core, container, server or desktop)" >&2; exit 2;;
 esac
 
 [ -r "$csv" ] || { echo "Cannot read $csv" >&2; exit 1; }
@@ -59,7 +61,7 @@ fi
 # --- Select rows for this profile -----------------------------------------
 # Cumulative: core=4, server=5, desktop=6 are the flag columns.
 case "$profile" in
-    core)    want='$4=="1"' ;;
+    core|container) want='$4=="1"' ;;
     server)  want='$4=="1" || $5=="1"' ;;
     desktop) want='$4=="1" || $5=="1" || $6=="1"' ;;
 esac
@@ -102,10 +104,18 @@ echo
 metadata_fresh=0
 if [ "$(id -u)" -eq 0 ] || [ "$dry_run" -eq 0 ]; then
     echo "Refreshing package metadata..."
+    # 'if', not '$SUDO apt-get update && metadata_fresh=1': bash applies 'set -e'
+    # only to the last command of an && list, so the older form swallowed a
+    # failed refresh entirely and quietly shrank the install set.
     case "$mgr" in
-        apt) $SUDO apt-get update -qq && metadata_fresh=1 ;;
-        dnf) $SUDO dnf -q makecache && metadata_fresh=1 ;;
+        apt) if $SUDO apt-get update -qq; then metadata_fresh=1; fi ;;
+        dnf) if $SUDO dnf -q makecache; then metadata_fresh=1; fi ;;
     esac
+    if [ "$metadata_fresh" -eq 0 ]; then
+        echo "Warning: could not refresh package metadata." >&2
+        echo "         What follows is judged against whatever this host had" >&2
+        echo "         cached, so packages that do exist may be skipped." >&2
+    fi
     echo
 fi
 

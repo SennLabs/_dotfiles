@@ -235,3 +235,114 @@ jobs:
           echo "resolved: $got"
           [ "$got" = "${{ matrix.bat }} ${{ matrix.fd }}" ] \
             || { echo "FAIL: expected '${{ matrix.bat }} ${{ matrix.fd }}'" >&2; exit 1; }
+
+  devcontainer-dotfiles:
+    # The dotfiles.repository path is a different shape to every job above: the
+    # tooling clones this repo to a path of its own choosing and runs an install
+    # script as the *remote user* inside an already-running container. 'docker
+    # build' cannot reproduce that, so it gets a job that simulates it.
+    name: dotfiles.repository flow
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/devcontainers/base:debian
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage a clone the way the dotfiles tooling would
+        run: |
+          git config --global --add safe.directory '*'
+          git init -q --bare /srv/dotfiles.git
+          git -C /srv/dotfiles.git symbolic-ref HEAD refs/heads/main
+          git push -q /srv/dotfiles.git HEAD:main
+          chown -R vscode:vscode /srv/dotfiles.git
+          su vscode -c 'git clone -q /srv/dotfiles.git $HOME/dotfiles' </dev/null
+
+      - name: Auto-detected bootstrap.sh links in place instead of re-cloning
+        run: |
+          # bootstrap.sh is on the list of entrypoints the tooling auto-detects,
+          # so it has to cope with being run from inside a clone that already
+          # exists. It used to clone a second copy to ~/_dotfiles and point
+          # every symlink there, at a tree nothing afterwards would update.
+          #
+          # DEVCONTAINER=true is what the tooling exports, and it is the whole
+          # of the profile selection, so this covers both at once. Only the one
+          # profile is ever run against this home: skipping a config is not the
+          # same as removing one an earlier profile put down, and the real flow
+          # starts from an empty home every time.
+          su vscode -c 'cd $HOME/dotfiles && DEVCONTAINER=true sh $HOME/dotfiles/bootstrap.sh' </dev/null
+          if [ -e /home/vscode/_dotfiles ]; then
+            echo "FAIL: bootstrap.sh cloned a second copy to ~/_dotfiles" >&2
+            exit 1
+          fi
+          target=$(readlink -f /home/vscode/.bash_aliases)
+          case "$target" in
+            /home/vscode/dotfiles/*) echo "ok: links point at the managed clone" ;;
+            *) echo "FAIL: links point outside it, at $target" >&2; exit 1 ;;
+          esac
+          grep -qx 'DOTFILEPROFILE=container' /home/vscode/.config/dotfiles \
+            || { echo "FAIL: did not select the container profile" >&2; exit 1; }
+          echo "ok: selected the container profile"
+
+      - name: The container profile links what it should, and nothing else
+        run: |
+          status=0
+          for l in ~vscode/.bash_aliases ~vscode/.bash_functions ~vscode/.inputrc \
+                   ~vscode/.tmux.conf ~vscode/.ssh/config ~vscode/.config/scripts \
+                   ~vscode/.config/nvim ~vscode/.config/git/config \
+                   ~vscode/.config/dotfiles_env.sh; do
+            if [ ! -e "$l" ]; then echo "FAIL: $l is missing or dangling" >&2; status=1; fi
+          done
+          # Neither tool is in the container package set, so neither config
+          # should have been put down for it.
+          for l in ~vscode/.config/fish/config.fish ~vscode/.config/yazi ~vscode/.wezterm.lua; do
+            if [ -e "$l" ]; then echo "FAIL: $l should not be linked" >&2; status=1; fi
+          done
+          exit $status
+
+      - name: The host's git config wins over ours, by design
+        run: |
+          # Dev Containers copies the host's ~/.gitconfig in. Git reads it after
+          # the XDG file this repo links, so the host has the final say on any
+          # key both of them set -- while ours still supplies the rest.
+          cat > /home/vscode/.gitconfig <<'EOF'
+          [pull]
+          	ff = false
+          EOF
+          chown vscode:vscode /home/vscode/.gitconfig
+          got=$(su vscode -c 'git config --get pull.ff' </dev/null)
+          [ "$got" = "false" ] \
+            || { echo "FAIL: host ~/.gitconfig lost to ours (pull.ff=$got)" >&2; exit 1; }
+          got=$(su vscode -c 'git config --get alias.s' </dev/null)
+          [ "$got" = "status --short --branch" ] \
+            || { echo "FAIL: our aliases did not survive (alias.s=$got)" >&2; exit 1; }
+          rm -f /home/vscode/.gitconfig
+          echo ok
+
+      - name: A failing package install must not cost you the configs
+        run: |
+          # Linking used to run *after* the packages, under 'set -e', so a
+          # single unreachable mirror meant no dotfiles at all.
+          su vscode -c 'rm -rf $HOME/.bash_aliases $HOME/.inputrc $HOME/.tmux.conf' </dev/null
+          mv /usr/bin/apt-get /usr/bin/apt-get.real
+          printf '#!/bin/sh\nexit 100\n' > /usr/bin/apt-get
+          chmod +x /usr/bin/apt-get
+          rc=0
+          su vscode -c 'bash $HOME/dotfiles/Init.sh --profile container --apps' </dev/null || rc=$?
+          mv /usr/bin/apt-get.real /usr/bin/apt-get
+          [ "$rc" -eq 0 ] \
+            || { echo "FAIL: Init.sh exited $rc when only the package step failed" >&2; exit 1; }
+          status=0
+          for l in ~vscode/.bash_aliases ~vscode/.inputrc ~vscode/.tmux.conf; do
+            if [ ! -e "$l" ]; then echo "FAIL: $l was not linked" >&2; status=1; fi
+          done
+          exit $status
+
+      - name: Interactive login shell picks the config up
+        run: |
+          for fn in mkc cdls lsh; do
+            su vscode -c "bash -lic 'type -t $fn'" </dev/null 2>/dev/null | grep -qx function \
+              || { echo "FAIL: $fn is not defined in an interactive login shell" >&2; exit 1; }
+          done
+          su vscode -c "bash -lc 'echo \$DOTFILES_ENV'" </dev/null | grep -qx 1 \
+            || { echo "FAIL: environment missing in a non-interactive login shell" >&2; exit 1; }
+          echo ok
