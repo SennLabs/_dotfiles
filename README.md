@@ -31,6 +31,13 @@ cd ~/_dotfiles
 ./Init.sh --profile server --apps # also install packages
 ```
 
+On Windows, from PowerShell in the cloned repo:
+
+```powershell
+.\InstallApps.ps1 -InstallProfile desktop   # packages via winget
+.\SetupSimLink.ps1 -InstallProfile desktop  # link the configs
+```
+
 Re-running is safe. `SetupSimLink.sh` is idempotent, and anything already at a
 target path is moved to `~/.dotfiles-backup/<timestamp>/` rather than deleted.
 
@@ -56,6 +63,7 @@ does not link WezTerm or KZones.
 | `SetupSimLink.sh` | Does the linking; idempotent, backs up what it replaces |
 | `InstallApps.sh` | Installs packages from `apps/app_list.csv` via apt or dnf |
 | `InstallApps.ps1` | Windows equivalent, via winget, same CSV |
+| `SetupSimLink.ps1` | Windows equivalent of `SetupSimLink.sh` (see below) |
 | `SetupCron.sh` | Installs the 2-hourly pull-only sync |
 | `AutoGitSync.sh` | **Pulls only.** Never commits or pushes |
 
@@ -81,6 +89,25 @@ missing from a host's repos are reported and skipped, not fatal.
 | `config/misc_env_var.sh` | `~/.config/dotfiles_env.sh` | all |
 | `config/wezterm/.wezterm.lua` | `~/.wezterm.lua` | desktop |
 | `config/kzones/layouts.json` | `~/.local/share/kzones/layouts.json` | desktop |
+
+### On Windows
+
+`SetupSimLink.ps1` links only what native Windows uses; bash, fish, tmux,
+readline and KZones are skipped. It honours `XDG_CONFIG_HOME` the same way each
+tool does.
+
+| Repo path | Target | Profile |
+| --- | --- | --- |
+| `config/ssh/config` | `%USERPROFILE%\.ssh\config` | all |
+| `config/git/config` | `%USERPROFILE%\.config\git\config` | all |
+| `config/nvim/` | `%LOCALAPPDATA%\nvim` | all |
+| `config/yazi/` | `%APPDATA%\yazi\config` | all |
+| `config/wezterm/.wezterm.lua` | `%USERPROFILE%\.config\wezterm\wezterm.lua` | desktop |
+
+Real symlinks need an elevated shell, or Developer Mode plus PowerShell 7.
+Without that, directories become junctions and files are **copied**. Copies do
+not follow later edits, so re-run the script after pulling. `-DryRun` shows what
+it would do.
 
 ### Shell startup, and why it is split
 
