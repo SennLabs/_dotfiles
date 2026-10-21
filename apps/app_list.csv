@@ -1,35 +1,35 @@
-ApplicationName,Group,SubGroup,Core,Server,Desktop,Apt,Dnf,Winget
-Git,Dev,Version Control,1,0,0,git,git,Git.Git
-curl,Dev,Utility,1,0,0,curl,curl,-
-ca-certificates,Dev,Utility,1,0,0,ca-certificates,ca-certificates,-
-less,Dev,Utility,1,0,0,less,less,-
-column,Dev,Utility,1,0,0,bsdextrautils,util-linux,-
-Tmux,Dev,Terminal,1,0,0,tmux,tmux,-
-NeoVim,Dev,Editor,1,0,0,neovim,neovim,Neovim.Neovim
-bat,Dev,Utility,1,0,0,bat,bat,sharkdp.bat
-fd,Dev,Utility,1,0,0,fd-find,fd-find,sharkdp.fd
-fzf,Dev,Utility,1,0,0,fzf,fzf,junegunn.fzf
-htop,Dev,Utility,0,1,0,htop,htop,-
-rsync,Dev,Utility,0,1,0,rsync,rsync,-
-jq,Dev,Utility,0,1,0,jq,jq,jqlang.jq
-ripgrep,Dev,Utility,0,1,0,ripgrep,ripgrep,BurntSushi.ripgrep.MSVC
-ncdu,Dev,Utility,0,1,0,ncdu,ncdu,-
-unzip,Dev,Utility,0,1,0,unzip,unzip,-
-Fish,Dev,Shell,0,1,0,fish,fish,-
-yazi,Dev,Utility,0,1,0,-,yazi,sxyazi.yazi
-Python,Dev,Language,0,1,0,python3 python3-pip,python3 python3-pip,Python.Python.3.12
-Rust,Dev,Language,0,1,0,rustc cargo,rust cargo,Rustlang.Rustup
-GitHub CLI,Dev,Version Control,0,1,0,gh,gh,GitHub.cli
-Docker Engine,Dev,Containerization,0,1,0,docker.io,moby-engine,-
-7-Zip,Utility,Archiver,0,1,0,p7zip-full,p7zip p7zip-plugins,7zip.7zip
-jrnl,Utility,Notetaking,0,1,0,-,-,-
-VSCode,Dev,Editor,0,0,1,-,-,Microsoft.VisualStudioCode
-wezterm,Dev,Terminal,0,0,1,-,-,wez.wezterm
-Podman Desktop,Dev,Containerization,0,0,1,-,-,RedHat.Podman-Desktop
-DB Browser for SQLite,Dev,Database,0,0,1,sqlitebrowser,sqlitebrowser,DBBrowserForSQLite.DBBrowserForSQLite
-PowerToys,Dev,Utility,0,0,1,-,-,Microsoft.PowerToys
-Notepad++,Utility,Editor,0,0,1,-,-,Notepad++.Notepad++
-KeePassXC,Utility,Password Manager,0,0,1,keepassxc,keepassxc,KeePassXCTeam.KeePassXC
-Firefox,Utility,Browser,0,0,1,firefox,firefox,Mozilla.Firefox
-Inkscape,Utility,Graphics,0,0,1,inkscape,inkscape,Inkscape.Inkscape
-GIMP,Utility,Graphics,0,0,1,gimp,gimp,GIMP.GIMP
+ApplicationName,Group,SubGroup,Core,Server,Desktop,Apt,Dnf,Winget,Termux
+Git,Dev,Version Control,1,0,0,git,git,Git.Git,git
+curl,Dev,Utility,1,0,0,curl,curl,-,curl
+ca-certificates,Dev,Utility,1,0,0,ca-certificates,ca-certificates,-,ca-certificates
+less,Dev,Utility,1,0,0,less,less,-,less
+column,Dev,Utility,1,0,0,bsdextrautils,util-linux,-,util-linux
+Tmux,Dev,Terminal,1,0,0,tmux,tmux,-,tmux
+NeoVim,Dev,Editor,1,0,0,neovim,neovim,Neovim.Neovim,neovim
+bat,Dev,Utility,1,0,0,bat,bat,sharkdp.bat,bat
+fd,Dev,Utility,1,0,0,fd-find,fd-find,sharkdp.fd,fd
+fzf,Dev,Utility,1,0,0,fzf,fzf,junegunn.fzf,fzf
+htop,Dev,Utility,0,1,0,htop,htop,-,htop
+rsync,Dev,Utility,0,1,0,rsync,rsync,-,rsync
+jq,Dev,Utility,0,1,0,jq,jq,jqlang.jq,jq
+ripgrep,Dev,Utility,0,1,0,ripgrep,ripgrep,BurntSushi.ripgrep.MSVC,ripgrep
+ncdu,Dev,Utility,0,1,0,ncdu,ncdu,-,ncdu
+unzip,Dev,Utility,0,1,0,unzip,unzip,-,unzip
+Fish,Dev,Shell,0,1,0,fish,fish,-,fish
+yazi,Dev,Utility,0,1,0,-,yazi,sxyazi.yazi,yazi
+Python,Dev,Language,0,1,0,python3 python3-pip,python3 python3-pip,Python.Python.3.12,python python-pip
+Rust,Dev,Language,0,1,0,rustc cargo,rust cargo,Rustlang.Rustup,rust
+GitHub CLI,Dev,Version Control,0,1,0,gh,gh,GitHub.cli,gh
+Docker Engine,Dev,Containerization,0,1,0,docker.io,moby-engine,-,-
+7-Zip,Utility,Archiver,0,1,0,p7zip-full,p7zip p7zip-plugins,7zip.7zip,7zip
+jrnl,Utility,Notetaking,0,1,0,-,-,-,-
+VSCode,Dev,Editor,0,0,1,-,-,Microsoft.VisualStudioCode,-
+wezterm,Dev,Terminal,0,0,1,-,-,wez.wezterm,-
+Podman Desktop,Dev,Containerization,0,0,1,-,-,RedHat.Podman-Desktop,-
+DB Browser for SQLite,Dev,Database,0,0,1,sqlitebrowser,sqlitebrowser,DBBrowserForSQLite.DBBrowserForSQLite,-
+PowerToys,Dev,Utility,0,0,1,-,-,Microsoft.PowerToys,-
+Notepad++,Utility,Editor,0,0,1,-,-,Notepad++.Notepad++,-
+KeePassXC,Utility,Password Manager,0,0,1,keepassxc,keepassxc,KeePassXCTeam.KeePassXC,-
+Firefox,Utility,Browser,0,0,1,firefox,firefox,Mozilla.Firefox,-
+Inkscape,Utility,Graphics,0,0,1,inkscape,inkscape,Inkscape.Inkscape,-
+GIMP,Utility,Graphics,0,0,1,gimp,gimp,GIMP.GIMP,-

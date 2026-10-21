@@ -10,6 +10,16 @@ if [ -r "$HOME/.config/dotfiles" ]; then
 fi
 : "${DOTFILEDIR:=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
 
+if ! command -v crontab >/dev/null 2>&1; then
+    echo "crontab not found; no cron on this host." >&2
+    if [ -n "${TERMUX_VERSION:-}" ] || [[ "${PREFIX:-}" == */com.termux/* ]]; then
+        echo "On Termux: pkg install cronie termux-services, then sv-enable crond" >&2
+    else
+        echo "Containers usually lack cron; use a systemd timer instead." >&2
+    fi
+    exit 1
+fi
+
 GitSyncScript="${DOTFILEDIR}/AutoGitSync.sh"
 CronLine="0 */2 * * * ${GitSyncScript}"
 

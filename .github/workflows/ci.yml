@@ -235,3 +235,33 @@ jobs:
           echo "resolved: $got"
           [ "$got" = "${{ matrix.bat }} ${{ matrix.fd }}" ] \
             || { echo "FAIL: expected '${{ matrix.bat }} ${{ matrix.fd }}'" >&2; exit 1; }
+
+  install-termux:
+    # Termux has its own apt, its own package names, and no root or sudo. Run
+    # inside termux-docker via 'docker run' rather than as a job container:
+    # GitHub runs job containers as root, which is not how Termux ever runs.
+    name: install packages for real (termux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install core profile, link, and check the shell
+        run: |
+          docker run --rm -v "$PWD":/src:ro termux/termux-docker:x86_64 bash -lc '
+            set -e
+            cp -r /src ~/_dotfiles && cd ~/_dotfiles
+            bash ./InstallApps.sh --profile core --yes
+            for c in git curl tmux nvim fzf column less bat fd; do
+              command -v "$c" >/dev/null || { echo "FAIL: $c not installed" >&2; exit 1; }
+            done
+            bash ./Init.sh --profile server
+            bash ./Init.sh --profile server | grep -q "^->  Linked" \
+              && { echo "FAIL: second run relinked files" >&2; exit 1; }
+            got=$(bash -lc "echo \$DOTFILES_ENV \$BAT_CMD \$FD_CMD")
+            echo "resolved: $got"
+            [ "$got" = "1 bat fd" ] || { echo "FAIL: expected 1 bat fd" >&2; exit 1; }
+            for fn in mkc cdls lsh; do
+              bash -lic "type -t $fn" 2>/dev/null | grep -qx function \
+                || { echo "FAIL: $fn not defined" >&2; exit 1; }
+            done
+          '

@@ -6,6 +6,9 @@
 # Profiles are cumulative: server includes core, desktop includes both.
 # Packages not available in the host's repos are reported and skipped rather
 # than failing the run, because package names drift between distro versions.
+#
+# Supports apt (Debian/Ubuntu), dnf (Fedora/RHEL) and Termux on Android, which
+# ships its own apt with different package names and no root or sudo at all.
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -34,20 +37,33 @@ esac
 [ -r "$csv" ] || { echo "Cannot read $csv" >&2; exit 1; }
 
 # --- Detect the package manager -------------------------------------------
-if command -v apt-get >/dev/null 2>&1; then
+# Termux must be checked first: it has apt-get too, but with its own package
+# names, so it gets its own CSV column.
+is_termux() {
+    [ -n "${TERMUX_VERSION:-}" ] && return 0
+    case "${PREFIX:-}" in */com.termux/*) return 0;; esac
+    return 1
+}
+
+if is_termux; then
+    mgr=termux
+    col=10
+elif command -v apt-get >/dev/null 2>&1; then
     mgr=apt
     col=7
 elif command -v dnf >/dev/null 2>&1; then
     mgr=dnf
     col=8
 else
-    echo "No supported package manager found (need apt-get or dnf)." >&2
+    echo "No supported package manager found (need apt-get, dnf or Termux)." >&2
     echo "On Windows use InstallApps.ps1 instead." >&2
     exit 1
 fi
 
-# root already has the privileges; otherwise we need sudo.
-if [ "$(id -u)" -eq 0 ]; then
+# root already has the privileges; otherwise we need sudo. Termux is the
+# exception: it is never root, has no sudo, and its apt installs unprivileged
+# into the app's own prefix.
+if [ "$mgr" = termux ] || [ "$(id -u)" -eq 0 ]; then
     SUDO=""
 elif command -v sudo >/dev/null 2>&1; then
     SUDO="sudo"
@@ -69,7 +85,7 @@ esac
 mapfile -t requested < <(
     awk -F',' -v want_col="$col" '
         NR == 1 { next }
-        NF < 9  { next }
+        NF < 10 { next }
         '"$want"' {
             if ($want_col != "-" && $want_col != "") print $want_col
         }
@@ -79,7 +95,7 @@ mapfile -t requested < <(
 mapfile -t unavailable < <(
     awk -F',' -v want_col="$col" '
         NR == 1 { next }
-        NF < 9  { next }
+        NF < 10 { next }
         '"$want"' {
             if ($want_col == "-") print $1
         }
@@ -98,13 +114,14 @@ echo
 
 # --- Refresh metadata so availability checks are meaningful ----------------
 # Without repo metadata every package looks missing. Refresh whenever we can do
-# it without springing a sudo password prompt on a --dry-run.
+# it without springing a sudo password prompt on a --dry-run (root and Termux
+# never need one).
 metadata_fresh=0
-if [ "$(id -u)" -eq 0 ] || [ "$dry_run" -eq 0 ]; then
+if [ -z "$SUDO" ] || [ "$dry_run" -eq 0 ]; then
     echo "Refreshing package metadata..."
     case "$mgr" in
-        apt) $SUDO apt-get update -qq && metadata_fresh=1 ;;
-        dnf) $SUDO dnf -q makecache && metadata_fresh=1 ;;
+        apt|termux) $SUDO apt-get update -qq && metadata_fresh=1 ;;
+        dnf)        $SUDO dnf -q makecache && metadata_fresh=1 ;;
     esac
     echo
 fi
@@ -118,7 +135,7 @@ available=()
 missing=()
 for pkg in "${requested[@]}"; do
     case "$mgr" in
-        apt)
+        apt|termux)
             # Captured to a variable rather than piped into grep -q: under
             # 'set -o pipefail', grep -q exits on the first match, apt-cache
             # then dies of SIGPIPE, and the pipeline reports failure even
@@ -185,6 +202,9 @@ case "$mgr" in
     apt) DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y --no-install-recommends -- "${available[@]}" ;;
     # dnf5 rejects '--'; the names come from the CSV, so no separator is needed.
     dnf) $SUDO dnf install -y "${available[@]}" ;;
+    # pkg is Termux's apt wrapper; it handles mirror selection, which a raw
+    # apt-get does not.
+    termux) pkg install -y "${available[@]}" ;;
 esac
 
 echo

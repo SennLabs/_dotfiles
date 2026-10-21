@@ -25,7 +25,14 @@ DOTFILES_APPS="${DOTFILES_APPS:-0}"
 say() { printf '==> %s\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
-if [ "$(id -u)" -eq 0 ]; then
+# Termux (Android) is never root and installs unprivileged, so it must not
+# pick up a 'sudo' from the tsu package on a rooted phone. TERMUX_VERSION is
+# set by the app but not in termux-docker, hence the PREFIX fallback.
+case "${TERMUX_VERSION:-}:${PREFIX:-}" in
+    ?*:*|*:*/com.termux/*) is_termux=1 ;;
+    *) is_termux=0 ;;
+esac
+if [ "$is_termux" -eq 1 ] || [ "$(id -u)" -eq 0 ]; then
     SUDO=""
 elif command -v sudo >/dev/null 2>&1; then
     SUDO="sudo"

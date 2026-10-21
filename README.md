@@ -1,8 +1,8 @@
 # dotfiles
 
 Personal shell, terminal and editor configuration, aimed primarily at **headless
-Linux hosts reached over SSH** (Debian, Ubuntu, Fedora), with a desktop profile
-and partial Windows support. Everything is symlinked from this repo, so edits
+Linux hosts reached over SSH** (Debian, Ubuntu, Fedora), with a desktop profile,
+Termux (Android) support and partial Windows support. Everything is symlinked from this repo, so edits
 here take effect immediately.
 
 [![CI](https://github.com/SennLabs/_dotfiles/actions/workflows/ci.yml/badge.svg)](https://github.com/SennLabs/_dotfiles/actions/workflows/ci.yml)
@@ -38,6 +38,9 @@ On Windows, from PowerShell in the cloned repo:
 .\SetupSimLink.ps1 -InstallProfile desktop  # link the configs
 ```
 
+On Termux, the same commands work: `pkg install git` first, then the quick-start
+`curl | sh` line or the manual clone. See [On Termux](#on-termux) below.
+
 Re-running is safe. `SetupSimLink.sh` is idempotent, and anything already at a
 target path is moved to `~/.dotfiles-backup/<timestamp>/` rather than deleted.
 
@@ -61,15 +64,15 @@ does not link WezTerm or KZones.
 | `bootstrap.sh` | One-shot setup on a bare machine (POSIX sh; installs git) |
 | `Init.sh` | Records the repo path, then links configs |
 | `SetupSimLink.sh` | Does the linking; idempotent, backs up what it replaces |
-| `InstallApps.sh` | Installs packages from `apps/app_list.csv` via apt or dnf |
+| `InstallApps.sh` | Installs packages from `apps/app_list.csv` via apt, dnf or Termux's pkg |
 | `InstallApps.ps1` | Windows equivalent, via winget, same CSV |
 | `SetupSimLink.ps1` | Windows equivalent of `SetupSimLink.sh` (see below) |
 | `SetupCron.sh` | Installs the 2-hourly pull-only sync |
 | `AutoGitSync.sh` | **Pulls only.** Never commits or pushes |
 
 `apps/app_list.csv` is the single source of truth for packages, with per-manager
-columns (`Apt`, `Dnf`, `Winget`). A `-` means "not available here". Packages
-missing from a host's repos are reported and skipped, not fatal.
+columns (`Apt`, `Dnf`, `Winget`, `Termux`). A `-` means "not available here".
+Packages missing from a host's repos are reported and skipped, not fatal.
 
 ## Where things get linked
 
@@ -108,6 +111,22 @@ Real symlinks need an elevated shell, or Developer Mode plus PowerShell 7.
 Without that, directories become junctions and files are **copied**. Copies do
 not follow later edits, so re-run the script after pulling. `-DryRun` shows what
 it would do.
+
+### On Termux
+
+Termux ships its own apt, so `InstallApps.sh` detects it (via `TERMUX_VERSION`)
+and reads the `Termux` column of the CSV, because package names differ from
+Debian's (`fd` not `fd-find`, `python` not `python3`, `util-linux` for
+`column`). It never tries sudo there: Termux installs unprivileged into its own
+prefix. Docker has no Termux package and is skipped.
+
+The symlinks are the same as on Linux. Termux starts bash as a *login* shell, so
+the `~/.profile` hook below is what loads the environment and chains to
+`~/.bashrc`. The terminal supports OSC 52, so the tmux and Neovim clipboard
+setup works without `termux-api`.
+
+Cron is not installed by default; `SetupCron.sh` tells you what to add
+(`cronie` plus `termux-services`) if you want the pull-only sync there.
 
 ### Shell startup, and why it is split
 
@@ -170,9 +189,10 @@ Adds a 2-hourly cron job running `AutoGitSync.sh`, which **only pulls** — it
 never commits or pushes, and skips entirely if the tree is dirty or the branch
 has diverged. Committing stays manual.
 
-Two caveats: cron is absent from most containers (use a systemd timer instead),
-and cron has no SSH agent, so this only works while the repo is public over
-HTTPS.
+Two caveats: cron is absent from most containers (use a systemd timer instead)
+and from Termux by default (`pkg install cronie termux-services`, then
+`sv-enable crond`), and cron has no SSH agent, so this only works while the
+repo is public over HTTPS.
 
 ## CI
 
@@ -180,7 +200,8 @@ HTTPS.
 then installs the dotfiles inside minimal `debian:stable-slim`, `ubuntu:latest`
 and `fedora:latest` containers — asserting that the run is idempotent, that
 every symlink resolves, that a login shell picks up the environment, and that
-the package installer actually resolves real packages on both apt and dnf.
+the package installer actually resolves real packages on both apt and dnf. A
+further job does the same inside `termux/termux-docker`.
 
 ## Requirements
 
